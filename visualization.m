@@ -1,6 +1,6 @@
 somcount=100
-digitdimension=64%784
-digitsize = 8
+digitsize = 28
+digitdimension = digitsize * digitsize
 for s=0:(somcount-1)
   
   filename = sprintf("%d.som",s)
@@ -18,7 +18,8 @@ for s=0:(somcount-1)
   endfor  
 
   image = imresize(mat2gray(Mosaic),2,"linear");
-##  figure(1);  
-  imwrite(image,sprintf("/home/spaceman/Msc-I/ML/MestInt/OCR/soms/10x10/8x8digit/images/%d.jpg",s))
-##  pause(0.01)
+  figure(1);  
+##  imwrite(image,sprintf("/home/spaceman/Msc-I/ML/MestInt/OCR/soms/emnist/images/%d.jpg",s))
+  imshow(image);
+  pause(0.01)
 endfor

@@ -475,15 +475,13 @@ public:
 
 	std::vector<std::vector<digit>> &getMap() { return _map; }
 
-	void train()
+	void train(int maxT,std::function<void(int,int,SelfOrganizingMap*)> &&f=[](int,int,SelfOrganizingMap*){})
 	{
 		std::cout << "[SOM] starting training" << std::endl;
 		double initiallearningrate = 0.9;
 		double windowSmallness = 8;
 		double neighbourRadius = (std::max(mapWidth, mapHeight) / windowSmallness);
 		int T = 0;
-		int maxT = 3000;
-		int somsaverate = 100;
 		double minAdjustment = 0.1;
 		double maxAdjusted = minAdjustment + 1;
 		int randomSampleIndex;
@@ -493,14 +491,7 @@ public:
 
 		while (T < maxT && maxAdjusted > minAdjustment)
 		{
-			if ((T + maxT / somsaverate) % (maxT / somsaverate) == 0)
-			{
-				std::ofstream file;
-				file.open((std::to_string(T / (maxT / somsaverate)) + ".som").c_str());
-				printMapToStream(file);
-				file.close();
-			}
-
+			f(T,maxT,this);
 			randomSampleIndex = rand() % data.getDigits().size();
 			closestPrototype = getClosestPrototypeIndices(data.getDigits()[randomSampleIndex]);
 
@@ -511,7 +502,7 @@ public:
 			T++;
 		}
 
-		std::cout << "[SOM]Ran for " << T << "generations" << std::endl;
+		std::cout << "[SOM] Ran for " << T << "generations" << std::endl;
 	}
 	digit getClosestSample(int i, int j)
 	{

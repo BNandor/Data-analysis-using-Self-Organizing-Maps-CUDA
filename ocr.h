@@ -53,11 +53,13 @@ public:
 		}
 	}
 
-	std::ostream&  appendToFile(std::ostream& out){
-		for (int i = 0; i < _width * _height; i++) {
-			out<<(int)shades[i]<<" ";
+	std::ostream &appendToFile(std::ostream &out)
+	{
+		for (int i = 0; i < _width * _height; i++)
+		{
+			out << (int)shades[i] << " ";
 		}
-		out<<std::endl;
+		out << std::endl;
 		return out;
 	}
 
@@ -407,11 +409,14 @@ public:
 	SelfOrganizingMap(const digitSet &points, int mapWidth, int mapHeight) : _map(mapHeight, std::vector<digit>(mapWidth)), data(points), mapHeight(mapHeight), mapWidth(mapWidth)
 	{
 		srand(time(NULL));
-
+		if (points.getDigits().size() == 0)
+		{
+			throw "not enough data to create s.o.m!";
+		}
 		int digitWidth = points.getDigit(0).getWidth();
 		int digitHeight = points.getDigit(0).getHeight();
 
-		initializeSampledSOM(_map, digitWidth, digitHeight);
+		initializeRandomSOM(_map, digitWidth, digitHeight);
 	}
 
 	void initializeRandomSOM(std::vector<std::vector<digit>> &som, int dimx, int dimy)
@@ -472,32 +477,46 @@ public:
 
 	void train()
 	{
-		double learningRate = 0.9;
+		std::cout << "[SOM] starting training" << std::endl;
+		double initiallearningrate = 0.9;
 		double windowSmallness = 8;
 		double neighbourRadius = (std::max(mapWidth, mapHeight) / windowSmallness);
-		int T = 1;
-		int maxT = 10000;
+		int T = 0;
+		int maxT = 3000;
+		int somsaverate = 100;
 		double minAdjustment = 0.1;
 		double maxAdjusted = minAdjustment + 1;
 		int randomSampleIndex;
+		double learningRate;
+
 		std::pair<int, int> closestPrototype;
 
 		while (T < maxT && maxAdjusted > minAdjustment)
 		{
+			if ((T + maxT / somsaverate) % (maxT / somsaverate) == 0)
+			{
+				std::ofstream file;
+				file.open((std::to_string(T / (maxT / somsaverate)) + ".som").c_str());
+				printMapToStream(file);
+				file.close();
+			}
+
 			randomSampleIndex = rand() % data.getDigits().size();
 			closestPrototype = getClosestPrototypeIndices(data.getDigits()[randomSampleIndex]);
 
 			maxAdjusted = updateNeighbours(closestPrototype, learningRate, neighbourRadius, data.getDigits()[randomSampleIndex]);
-			std::cout << "maxadjust:" << maxAdjusted << std::endl;
+			learningRate = initiallearningrate * normal_pdf(T, 0, maxT / 3);
+			neighbourRadius = std::max(0.05, (std::max(mapWidth, mapHeight) / windowSmallness) * (maxT - T) / maxT /*normal_pdf( T, 0, maxT)*/);
+
 			T++;
-			learningRate = 0.9 * normal_pdf( T, 0, maxT/3);
-			neighbourRadius = (std::max(mapWidth, mapHeight) / windowSmallness)*normal_pdf( T, 0, maxT);
 		}
+
+		std::cout << "[SOM]Ran for " << T << "generations" << std::endl;
 	}
 	digit getClosestSample(int i, int j)
 	{
 #ifdef safe
-		if (!safebound(i,j))
+		if (!safebound(i, j))
 		{
 			std::cerr << "invalid protoype index" << std::endl;
 			exit(1);
@@ -508,29 +527,31 @@ public:
 		int minid;
 		for (int di = 0; di < data.getDigits().size(); di++)
 		{
-				d = _map[i][j] - data.getDigits()[di];
-				if (d < minDist)
-				{
-					minDist = d;
-					minid = di;
-				}
+			d = _map[i][j] - data.getDigits()[di];
+			if (d < minDist)
+			{
+				minDist = d;
+				minid = di;
+			}
 		}
 		return data.getDigits()[minid];
 	}
 
-	void printMap(){
+	void printMap()
+	{
 		for (int i = 0; i < mapHeight; i++)
 		{
 			for (int j = 0; j < mapWidth; j++)
 			{
-				std::cout<<getClosestSample(i,j).getValue()<<"-";
+				std::cout << getClosestSample(i, j).getValue() << "-";
 			}
-			std::cout<<std::endl;
+			std::cout << std::endl;
 		}
 	}
 
-	void printMapToStream(std::ostream & out){
-		out << mapHeight<<" "<<mapWidth<<std::endl; 
+	void printMapToStream(std::ostream &out)
+	{
+		out << mapHeight << " " << mapWidth << std::endl;
 		for (int i = 0; i < mapHeight; i++)
 		{
 			for (int j = 0; j < mapWidth; j++)
@@ -539,26 +560,47 @@ public:
 			}
 		}
 	}
+	double getClosestPrototypeDistance(const digit &sample)
+	{
+		double minDist = std::numeric_limits<double>::max();
+		double d;
+		forEachPrototype([&](digit &proto, int i, int j) {
+			d = proto - sample;
+			if (d < minDist)
+			{
+				minDist = d;
+			}
+		});
+
+		return minDist;
+	}
 
 private:
+	void forEachPrototype(std::function<void(digit &, int, int)> &&f)
+	{
+		for (int i = 0; i < mapHeight; i++)
+		{
+			for (int j = 0; j < mapWidth; j++)
+			{
+				f(_map[i][j], i, j);
+			}
+		}
+	}
+
 	std::pair<int, int> getClosestPrototypeIndices(const digit &sample)
 	{
 		double minDist = std::numeric_limits<double>::max();
 		double d;
 		int maxi, maxj;
-		for (int i = 0; i < mapHeight; i++)
-		{
-			for (int j = 0; j < mapWidth; j++)
+		forEachPrototype([&](digit &proto, int i, int j) {
+			d = proto - sample;
+			if (d < minDist)
 			{
-				d = _map[i][j] - sample;
-				if (d < minDist)
-				{
-					maxi = i;
-					maxj = j;
-					minDist = d;
-				}
+				maxi = i;
+				maxj = j;
+				minDist = d;
 			}
-		}
+		});
 		return std::make_pair(maxi, maxj);
 	}
 

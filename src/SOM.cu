@@ -25,20 +25,21 @@ public:
 		{
 			throw "not enough data to create s.o.m!";
 		}
-		data.normalize();
+
+		featuresMinMax = data.minMaxFeatureScale();
 		int digitWidth = points.getDigit(0).getWidth();
 		int digitHeight = points.getDigit(0).getHeight();
 
-		initializeSampledSOM(_map, digitWidth, digitHeight);
+		initializeRandomSOM(_map, digitWidth, digitHeight);
 	}
 
 	void initializeRandomSOM(std::vector<std::vector<digit>> &som, int dimx, int dimy)
 	{
-		std::for_each(som.begin(), som.end(), [dimx, dimy](std::vector<digit> &v) {
+		std::for_each(som.begin(), som.end(), [dimx, dimy, this](std::vector<digit> &v) {
 			std::fill(v.begin(), v.end(), digit(dimx, dimy));
 
-			std::for_each(v.begin(), v.end(), [](digit &d) {
-				d.initrandom();
+			std::for_each(v.begin(), v.end(), [this](digit &d) {
+				d.initrandom(featuresMinMax.first,featuresMinMax.second);
 			});
 		});
 	}
@@ -51,7 +52,7 @@ public:
 			});
 		});
 	}
-	
+
 	bool safebound(int i, int j)
 	{
 		return !(i < 0 || j < 0 || i >= mapHeight || j >= mapWidth);
@@ -90,7 +91,7 @@ public:
 
 	std::vector<std::vector<digit>> &getMap() { return _map; }
 
-	void train(int maxT,std::function<void(int,int,SelfOrganizingMap*)> &&f=[](int,int,SelfOrganizingMap*){})
+	void train(int maxT,std::function<void(int,int,SelfOrganizingMap*)> &&everyFewIterations=[](int,int,SelfOrganizingMap*){})
 	{
 		std::cout << "[SOM] starting training" << std::endl;
 		double initiallearningrate = 0.9;
@@ -106,7 +107,7 @@ public:
 
 		while (T < maxT /*&& maxAdjusted > minAdjustment*/)
 		{
-			f(T,maxT,this);
+			everyFewIterations(T,maxT,this);
 			randomSampleIndex = rand() % data.getDigits().size();
 			closestPrototype = getClosestPrototypeIndices(data.getDigits()[randomSampleIndex]);
 
@@ -119,6 +120,7 @@ public:
 
 		std::cout << "[SOM] Ran for " << T << "generations" << std::endl;
 	}
+
 	digit getClosestSample(int i, int j)
 	{
 #ifdef safe
@@ -226,6 +228,7 @@ private:
 			int maxcuda_i;
 			int maxcuda_j;
 			double cuminDist = std::numeric_limits<double>::max();
+
 			for(int i=0;i<mapHeight;i++){
 				for(int j=0;j<mapWidth;j++){
 					if(*(distances + i*mapWidth +j) < cuminDist){
@@ -233,16 +236,17 @@ private:
 						maxcuda_i = i;
 						maxcuda_j = j;
 					}
-					std::cout<<" current distance"<<*(distances + i*mapWidth +j)<<" minDistance "<<cuminDist<<std::endl;
 				}
 			}
-			std::cout<<" ----- "<<std::endl;
+
 			cudaFree(dev_distance);
 			cudaFree(dev_sample);
 			cudaFree(dev_map);	
+
 			if(maxcuda_i >= mapHeight || maxcuda_j >= mapWidth){
-				std::cerr<<"will segfault"<<std::endl;
+				std::cerr<<"Error: please normalize your data properly, could not handle distance, it is inf!"<<std::endl;
 			}
+
 		return std::make_pair(maxcuda_i, maxcuda_j);
 	}
 
@@ -259,8 +263,10 @@ private:
 		}
 		return closestMaxAbsDistance;
 	}
+
 	digitSet data;
 	std::vector<std::vector<digit>> _map;
+	std::pair<double,double> featuresMinMax;
 	int mapHeight;
 	int mapWidth;
 };

@@ -9,8 +9,9 @@
 #include <time.h>
 #include <math.h>
 #include <limits>
+
 #include "digit.cu"
-	
+
 class digitSet
 {
 protected:
@@ -19,7 +20,8 @@ protected:
 	int _height;
 
 public:
-	digitSet(int width = 8, int height = 8) : _width(width), _height(height) {}
+    digitSet(int width = 8, int height = 8) : _width(width), _height(height) {}
+    
 	void add(const digit &d)
 	{
 #ifdef safe
@@ -32,12 +34,44 @@ public:
 		_digits.push_back(d);
     }
     
-	void normalize(){std::for_each(_digits.begin(),_digits.end(),[&](digit&digit){digit.normalize();});}
+	std::pair<double,double> minMaxFeatureScale() {
+        double minimum=std::numeric_limits<double>::max();
+        std::for_each(_digits.begin(),_digits.end(),[&](digit&digit) {
+            double digitMinshade = digit.getMinShade();
+            if(minimum > digitMinshade){
+                minimum = digitMinshade;
+            }
+        });
+        double maximum=std::numeric_limits<double>::min();
+        std::for_each(_digits.begin(),_digits.end(),[&](digit&digit) {
+            double digitMaxshade = digit.getMaxShade();
+            if(maximum < digitMaxshade){
+                maximum = digitMaxshade;
+            }
+        });
+        std::for_each(_digits.begin(),_digits.end(),[&](digit&digit) {
+            digit.minMaxNormalize(minimum,maximum);
+        });
+        return std::make_pair(minimum,maximum);
+    }
+    
 	digitSet(const digitSet &other) : _digits(other._digits), _width(other._width), _height(other._height) {}
-	const digit &getDigit(int index) const { return _digits[index]; }
-	const std::vector<digit> &getDigits() const { return _digits; }
-	int size() const { return _digits.size(); }
-	int dimension() const { return _width * _height; };
+	const digit &getDigit(int index) const {
+         return _digits[index]; 
+    }
+
+    const std::vector<digit> &getDigits() const { 
+        return _digits; 
+    }
+
+    int size() const { 
+        return _digits.size(); 
+    }
+
+	int dimension() const { 
+        return _width * _height; 
+    };
+
 	friend std::istream &operator>>(std::istream &in, digitSet &other){
 		std::string line;
 		while(getline(in,line)){

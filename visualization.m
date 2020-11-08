@@ -1,5 +1,5 @@
 somcount=100
-digitsize = 28
+digitsize = 8
 digitdimension = digitsize * digitsize
 for s=0:(somcount-1)
   

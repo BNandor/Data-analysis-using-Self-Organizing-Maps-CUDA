@@ -8,6 +8,7 @@
 #include <time.h>
 #include <math.h>
 #include <limits>
+#include <functional>
 
 class digit
 {
@@ -51,20 +52,21 @@ public:
 
 	int getWidth() const { return _width; }
 	int getHeight() const { return _height; }
-	double * getShades()const{return shades;}
-	void initrandom()
+    double * getShades()const{return shades;}
+    
+	void initrandom(double min, double max)
 	{
 		for (int i = 0; i < dimension(); i++)
 		{
-			shades[i] = rand() % 256;
+			shades[i] = min + ((double) rand() / (RAND_MAX)) * (max - min);
 		}
 	}
 
-	std::ostream &appendToFile(std::ostream &out)
+	std::ostream &appendToFile(std::ostream &out,std::function<double(double)> &&mappedShade=[](double shade){return shade;})
 	{
 		for (int i = 0; i < _width * _height; i++)
 		{
-			out << (int)(shades[i]*255) << " ";
+			out << mappedShade(shades[i]) << " ";
 		}
 		out << std::endl;
 		return out;
@@ -85,7 +87,8 @@ public:
 			sum.shades[i] += other.shades[i];
 		}
 		return sum;
-	}
+    }
+    
 	digit minus(const digit &other) const
 	{
 #ifdef safe
@@ -111,8 +114,9 @@ public:
 			d.shades[i] *= scalar;
 		}
 		return d;
-	}
-	double getMaxAbsShade()
+    }
+
+    double getMaxAbsShade()
 	{
 		double max = 0;
 		for (int i = 0; i < _width * _height; i++)
@@ -124,16 +128,46 @@ public:
 		}
 		return max;
 	}
-
-	void normalize(){
-		double max = getMaxAbsShade();
-		if(max != 0){
-			for (int i = 0; i < _width * _height; i++)
+    
+	double getMaxShade()
+	{
+		double max=std::numeric_limits<double>::min();
+		for (int i = 0; i < _width * _height; i++)
+		{
+			if (shades[i] > max)
 			{
-				shades[i]/=255.0;
+				max = shades[i];
 			}
 		}
-	}
+		return max;
+    }
+    
+
+    double getMinShade()
+	{
+		double min = _width !=0 && _height != 0 ? shades[0]:0;
+		for (int i = 1; i < _width * _height; i++)
+		{
+			if (shades[i] < min)
+			{
+				min = shades[i];
+			}
+		}
+		return min;
+    }
+
+    void minMaxNormalize(double min, double max){
+
+        if(max <= min){
+            throw "[DIGIT:minMaxNormalize] Error, max <= min!";
+        }
+
+        double width = (max - min);
+        for (int i = 0; i < _width * _height; i++)
+		{
+            shades[i]= (shades[i]-min) / width;
+        }
+    }
 
 	double operator[](int index) const { return shades[index]; }
 	int getValue() const { return value; }

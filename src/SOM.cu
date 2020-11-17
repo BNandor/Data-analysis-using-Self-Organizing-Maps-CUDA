@@ -32,13 +32,24 @@ public:
 		int digitHeight = points.getDigit(0).getHeight();
 		sampleDim = digitWidth*digitHeight;
 
-		initializeRandomSOM(_map, digitWidth, digitHeight);
+		initializeSampledSOM(_map, digitWidth, digitHeight);
 		copy_map_to_device(digitWidth*digitHeight,mapWidth,mapHeight);
+	}
+
+	SelfOrganizingMap(const SelfOrganizingMap& other) {
+		data = other.data;
+		_map = other._map;
+
+		featuresMinMax = other.featuresMinMax;
+	    mapHeight = other.mapHeight;
+		mapWidth = other.mapWidth;
+		sampleDim = other.sampleDim;
+		cudaMalloc((void**)&dev_map,sizeof(double)*sampleDim* mapWidth * mapHeight);
+		cudaMemcpy(dev_map,other.dev_map,sizeof(double)*sampleDim*mapHeight*mapWidth,cudaMemcpyDeviceToDevice);
 	}
 
 	void copy_map_to_device(int dim, int mapWidth, int mapHeight){
 		cudaMalloc((void**)&dev_map,sizeof(double)*dim* mapWidth * mapHeight);
-		// dim * mapwidth * mapheight
 		for(int i=0;i<mapHeight;i++){
 			for(int j=0;j<mapWidth;j++){
 				cudaMemcpy((double*)(dev_map + i*mapWidth*dim + j*dim),_map[i][j].getShades(),sizeof(double)*dim,cudaMemcpyHostToDevice);
@@ -47,7 +58,9 @@ public:
 	}
 
 	~SelfOrganizingMap(){
-		cudaFree(dev_map);
+		if(dev_map != nullptr){
+			cudaFree(dev_map);
+		}
 	}
 
 	void initializeRandomSOM(std::vector<std::vector<digit>> &som, int dimx, int dimy)
@@ -195,11 +208,12 @@ public:
 
 	double getClosestPrototypeDistance(const digit &sample)
 	{
-		// Copy map from device
 		double minDist = std::numeric_limits<double>::max();
 		double d;
 		
 		forEachPrototype([&](digit &proto, int i, int j) {
+	
+			cudaMemcpy(_map[i][j].getShades(),dev_map + sampleDim*(i*mapWidth + j),sizeof(double)*sampleDim,cudaMemcpyDeviceToHost);
 			d = proto - sample;
 			if (d < minDist)
 			{

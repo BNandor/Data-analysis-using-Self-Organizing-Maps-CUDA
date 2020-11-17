@@ -194,13 +194,23 @@ int main(int argc, const char *argv[])
 		digitSet test;
 		testinput >> test;
 		std::vector<SelfOrganizingMap> maps;
+		std::string animationPath = options.count("animationPath") > 0 ? options["animationPath"] : "./";
+		int frameCount = options.count("framecount") > 0 ? std::atoi(options["framecount"].c_str()) : defaultFramecount;
 
 		for (int i = 0; i < classCount; i++)
 		{
 			maps.push_back(SelfOrganizingMap(filtered[i], mapW, mapH));
-			maps[i].train(maxT);
+			maps[i].train(maxT,[&](int T, int maxT, SelfOrganizingMap *map) {
+				if ((T + maxT / frameCount) % (maxT / frameCount) == 0)
+				{
+					std::ofstream file;
+					file.open(animationPath +"/"+ std::to_string(i)+"_"+(std::to_string(T / (maxT / frameCount)) + ".som").c_str());
+					map->printMapToStream(file);
+					file.close();
+				}
+			});
 		}
-
+		test.minMaxFeatureScale();
 		std::cout << "[SOM] precision:" << std::count_if(test.getDigits().begin(), test.getDigits().end(), [&](auto &sample) {
 										 return classify(maps, sample);
 									 }) / (float)test.getDigits().size()

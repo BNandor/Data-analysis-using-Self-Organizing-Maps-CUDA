@@ -32,7 +32,8 @@ public:
 		int digitHeight = points.getDigit(0).getHeight();
 		sampleDim = digitWidth*digitHeight;
 
-		initializeSampledSOM(_map, digitWidth, digitHeight);
+		// initializeSampledSOM(_map, digitWidth, digitHeight);
+		initializeRandomSOM(_map, digitWidth, digitHeight);
 		copy_map_to_device(digitWidth*digitHeight,mapWidth,mapHeight);
 	}
 
@@ -57,7 +58,7 @@ public:
 		}
 	}
 
-	~SelfOrganizingMap(){
+	~SelfOrganizingMap() {
 		if(dev_map != nullptr){
 			cudaFree(dev_map);
 		}

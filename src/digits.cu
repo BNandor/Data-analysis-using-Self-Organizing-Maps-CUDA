@@ -4,6 +4,7 @@
 #include <vector>
 #include <algorithm>
 #include <map>
+#include <utility>
 #include "SOM.cu"
 
 using namespace std;
@@ -69,6 +70,37 @@ std::map<std::string, std::string> parse_options(int argc, const char *argv[])
 	return options;
 }
 
+std::pair<digitSet,digitSet> random_split(const digitSet& train,const digitSet & test) {
+
+	digitSet splitTrain;
+	digitSet splitTest;
+	std::vector<int> indices;
+	int trainSize = train.getDigits().size();
+	int testSize = test.getDigits().size();
+
+	for (int i=0; i<trainSize + testSize; ++i) {
+		indices.push_back(i);
+	}
+
+	std::random_shuffle (indices.begin(), indices.end());
+
+	for(int i=0;i<trainSize;++i) {
+		if(indices[i] < trainSize) {
+			splitTrain.add(train.getDigit(indices[i]));	
+		}else{
+			splitTrain.add(test.getDigit(indices[i]-trainSize));	
+		}
+	}
+
+	for(int i=trainSize;i<trainSize + testSize;++i) {
+		if(indices[i] < trainSize) {
+			splitTest.add(train.getDigit(indices[i]));	
+		}else{
+			splitTest.add(test.getDigit(indices[i]-trainSize));	
+		}
+	}
+	return std::make_pair(splitTrain,splitTest);
+}
 
 int main(int argc, const char *argv[])
 {
@@ -184,15 +216,18 @@ int main(int argc, const char *argv[])
 
 		digitSet train(digitW, digitH);
 		input >> train;
+		digitSet test;
+		testinput >> test;
+		  
+		std::pair<digitSet,digitSet> splitData = random_split(train,test);
+		digitSet splitTrain = splitData.first;
+		digitSet splitTest = splitData.second;
 
 		digitSet filtered[classCount];
 		for (int i = 0; i < classCount; i++)
 		{
-			filtered[i] = filterByValue(train, i);
+			filtered[i] = filterByValue(splitTrain, i);
 		}
-
-		digitSet test;
-		testinput >> test;
 		std::vector<SelfOrganizingMap> maps;
 		std::string animationPath = options.count("animationPath") > 0 ? options["animationPath"] : "./";
 		int frameCount = options.count("framecount") > 0 ? std::atoi(options["framecount"].c_str()) : defaultFramecount;
@@ -210,10 +245,10 @@ int main(int argc, const char *argv[])
 				}
 			});
 		}
-		test.minMaxFeatureScale();
-		std::cout << "[SOM] precision:" << std::count_if(test.getDigits().begin(), test.getDigits().end(), [&](auto &sample) {
+		splitTest.minMaxFeatureScale();
+		std::cout << "[SOM] precision:" << std::count_if(splitTest.getDigits().begin(), splitTest.getDigits().end(), [&](auto &sample) {
 										 return classify(maps, sample);
-									 }) / (float)test.getDigits().size()
+									 }) / (float)splitTest.getDigits().size()
 				  << std::endl;
 	}
 	return 0;

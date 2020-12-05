@@ -100,4 +100,5 @@ digitSet filterByValue(const digitSet& tofilter,double value){
 	}
 	return filtered;	
 }
+
 #endif

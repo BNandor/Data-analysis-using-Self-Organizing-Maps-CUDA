@@ -102,6 +102,61 @@ std::pair<digitSet,digitSet> random_split(const digitSet& train,const digitSet &
 	return std::make_pair(splitTrain,splitTest);
 }
 
+std::pair<digitSet,digitSet> crossvalidate_split(const digitSet& train, const digitSet & test, int k, int testFractionIndex ) {
+	
+	digitSet splitTrain;
+	digitSet splitTest;
+	std::vector<int> indices;
+	int trainSize = train.getDigits().size();
+	int testSize = test.getDigits().size();
+
+	if (k <= 0 || k>= trainSize + testSize) {
+		std::cerr<<"[crossvalidate_split] error, invalid k provided:"<<k<<std::endl;
+		exit(1);
+	}
+
+	int testFractionSize = (trainSize + testSize)/k;
+	int testStartingIndex = testFractionIndex*testFractionSize;
+	int testEndingIndex = (testFractionIndex+1)*testFractionSize;
+	if (testStartingIndex < 0 || testStartingIndex>= trainSize + testSize) {
+		std::cerr<<"[crossvalidate_split] error, invalid testStartingIndex provided:"<<testStartingIndex<<std::endl;
+		exit(1);
+	}
+	if (testEndingIndex < 0 || testEndingIndex> trainSize + testSize) {
+		std::cerr<<"[crossvalidate_split] error, invalid testEndingIndex provided:"<<testEndingIndex<<std::endl;
+		exit(1);
+	}
+	for (int i=0; i< trainSize + testSize; ++i) {
+		indices.push_back(i);
+	}
+
+	for(int i=0;i<testStartingIndex;++i) {
+		if(indices[i] < trainSize) {
+			splitTrain.add(train.getDigit(indices[i]));	
+		}else{
+			splitTrain.add(test.getDigit(indices[i]-trainSize));	
+		}
+	}
+
+	for(int i=testStartingIndex;i<testEndingIndex;++i) {
+		if(indices[i] < trainSize) {
+			splitTest.add(train.getDigit(indices[i]));	
+		}else{
+			splitTest.add(test.getDigit(indices[i]-trainSize));	
+		}
+	}
+
+	for(int i=testEndingIndex;i<trainSize + testSize;++i) {
+		if(indices[i] < trainSize) {
+			splitTrain.add(train.getDigit(indices[i]));	
+		}else{
+			splitTrain.add(test.getDigit(indices[i]-trainSize));	
+		}
+	}
+
+	return std::make_pair(splitTrain,splitTest);
+}
+
 int main(int argc, const char *argv[])
 {
 
@@ -218,38 +273,58 @@ int main(int argc, const char *argv[])
 		input >> train;
 		digitSet test;
 		testinput >> test;
-		  
-		std::pair<digitSet,digitSet> splitData = random_split(train,test);
-		digitSet splitTrain = splitData.first;
-		digitSet splitTest = splitData.second;
+		std::vector<double> accuracies;
+		int k=5;
+		for(int i=0;i<k;++i){
 
-		digitSet filtered[classCount];
-		for (int i = 0; i < classCount; i++)
-		{
-			filtered[i] = filterByValue(splitTrain, i);
-		}
-		std::vector<SelfOrganizingMap> maps;
-		std::string animationPath = options.count("animationPath") > 0 ? options["animationPath"] : "./";
-		int frameCount = options.count("framecount") > 0 ? std::atoi(options["framecount"].c_str()) : defaultFramecount;
+			std::pair<digitSet,digitSet> splitData = crossvalidate_split(train,test,k,i);
+			digitSet splitTrain = splitData.first;
+			digitSet splitTest = splitData.second;
 
-		for (int i = 0; i < classCount; i++)
-		{
-			maps.push_back(SelfOrganizingMap(filtered[i], mapW, mapH));
-			maps[i].train(maxT,[&](int T, int maxT, SelfOrganizingMap *map) {
-				if ((T + maxT / frameCount) % (maxT / frameCount) == 0)
+			digitSet filtered[classCount];
+			for (int i = 0; i < classCount; i++)
+			{
+				filtered[i] = filterByValue(splitTrain, i);
+			}
+			std::vector<SelfOrganizingMap> maps;
+			std::string animationPath = options.count("animationPath") > 0 ? options["animationPath"] : "./";
+			int frameCount = options.count("framecount") > 0 ? std::atoi(options["framecount"].c_str()) : defaultFramecount;
+			try {
+				for (int i = 0; i < classCount; i++)
 				{
-					std::ofstream file;
-					file.open(animationPath +"/"+ std::to_string(i)+"_"+(std::to_string(T / (maxT / frameCount)) + ".som").c_str());
-					map->printMapToStream(file);
-					file.close();
+					maps.push_back(SelfOrganizingMap(filtered[i], mapW, mapH));
+					// maps[i].train(maxT,[&](int T, int maxT, SelfOrganizingMap *map) {
+					// 	if ((T + maxT / frameCount) % (maxT / frameCount) == 0)
+					// 	{
+					// 		std::ofstream file;
+					// 		file.open(animationPath +"/"+ std::to_string(i)+"_"+(std::to_string(T / (maxT / frameCount)) + ".som").c_str());
+					// 		map->printMapToStream(file);
+					// 		file.close();
+					// 	}
+					// });
+					maps[i].train(maxT);
 				}
-			});
+			} catch (const char* error) {
+				std::cerr<<"error:"<<error<<std::endl;
+			}
+			splitTest.minMaxFeatureScale();
+			double accuracy = std::count_if(splitTest.getDigits().begin(), splitTest.getDigits().end(), [&](auto &sample) {
+																												return classify(maps, sample);
+																											}
+											) / (float)splitTest.getDigits().size();
+			std::cout << "[SOM] accuracy:" << accuracy<< std::endl;
+			accuracies.push_back(accuracy);
 		}
-		splitTest.minMaxFeatureScale();
-		std::cout << "[SOM] precision:" << std::count_if(splitTest.getDigits().begin(), splitTest.getDigits().end(), [&](auto &sample) {
-										 return classify(maps, sample);
-									 }) / (float)splitTest.getDigits().size()
-				  << std::endl;
+		std::cout<<"[crossvalidate] accuracies";
+		std::for_each(accuracies.begin(),accuracies.end(),[](double accuracy) {std::cout<<accuracy<<" ";});
+		std::cout<<std::endl;
+		double sum =0;
+		std::for_each(accuracies.begin(),accuracies.end(),[&sum](double accuracy) {sum +=accuracy;});
+
+		if(accuracies.size() != 0) {
+			std::cout<<"Average accuracy: "<<sum/accuracies.size()<<std::endl;
+		}
+
 	}
 	return 0;
 }

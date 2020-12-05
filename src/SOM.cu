@@ -22,10 +22,10 @@ public:
 	SelfOrganizingMap(const digitSet &points, int mapWidth, int mapHeight) : _map(mapHeight, std::vector<digit>(mapWidth)), data(points), mapHeight(mapHeight), mapWidth(mapWidth)
 	{
 		srand(time(NULL));
-		if (points.getDigits().size() < mapWidth*mapHeight )
-		{
-			throw "not enough data to create s.o.m!";
-		}
+		// if (points.getDigits().size() < mapWidth*mapHeight )
+		// {
+		// 	throw "not enough data to create s.o.m!";
+		// }
 
 		featuresMinMax = data.minMaxFeatureScale();
 		int digitWidth = points.getDigit(0).getWidth();
@@ -34,7 +34,9 @@ public:
 
 		// initializeSampledSOM(_map, digitWidth, digitHeight);
 		initializeRandomSOM(_map, digitWidth, digitHeight);
+		setup_CUDA(sampleDim,data.getDigits().size());
 		copy_map_to_device(digitWidth*digitHeight,mapWidth,mapHeight);
+		copy_samples_to_device(sampleDim);
 	}
 
 	SelfOrganizingMap(const SelfOrganizingMap& other) {
@@ -45,12 +47,24 @@ public:
 	    mapHeight = other.mapHeight;
 		mapWidth = other.mapWidth;
 		sampleDim = other.sampleDim;
-		cudaMalloc((void**)&dev_map,sizeof(double)*sampleDim* mapWidth * mapHeight);
+		setup_CUDA(sampleDim,data.getDigits().size());
 		cudaMemcpy(dev_map,other.dev_map,sizeof(double)*sampleDim*mapHeight*mapWidth,cudaMemcpyDeviceToDevice);
+		cudaMemcpy(dev_samples,other.dev_samples,sizeof(double)*sampleDim*data.getDigits().size(),cudaMemcpyDeviceToDevice);
+	}
+
+	void setup_CUDA(int sampleDim,int sampleCount) {
+		cudaMalloc((void**)&dev_samples,sizeof(double)*sampleDim*sampleCount);
+		cudaMalloc((void**)&dev_distance,sizeof(double)*mapWidth*mapHeight);
+		cudaMalloc((void**)&dev_map,sizeof(double)*sampleDim* mapWidth * mapHeight);
+	}
+
+	void copy_samples_to_device (int sampleDim){
+		for(int i=0;i<data.getDigits().size();++i) {
+			cudaMemcpy((double*)dev_samples + i*sampleDim, data.getDigits()[i].getShades(),sizeof(double)*sampleDim,cudaMemcpyHostToDevice);
+		}
 	}
 
 	void copy_map_to_device(int dim, int mapWidth, int mapHeight){
-		cudaMalloc((void**)&dev_map,sizeof(double)*dim* mapWidth * mapHeight);
 		for(int i=0;i<mapHeight;i++){
 			for(int j=0;j<mapWidth;j++){
 				cudaMemcpy((double*)(dev_map + i*mapWidth*dim + j*dim),_map[i][j].getShades(),sizeof(double)*dim,cudaMemcpyHostToDevice);
@@ -58,9 +72,25 @@ public:
 		}
 	}
 
+	void copy_map_from_device (int sampleDim, int mapWidth, int mapHeight ){
+		for (int i = 0; i < mapHeight; i++)
+		{
+			for (int j = 0; j < mapWidth; j++)
+			{
+				cudaMemcpy(_map[i][j].getShades(),dev_map + sampleDim*(i*mapWidth + j),sizeof(double)*sampleDim,cudaMemcpyDeviceToHost);
+			}
+		}
+	}
+
 	~SelfOrganizingMap() {
 		if(dev_map != nullptr){
 			cudaFree(dev_map);
+		}
+		if(dev_samples != nullptr ) {
+			cudaFree(dev_samples);
+		}
+		if(dev_distance != nullptr ) {
+			cudaFree(dev_distance);
 		}
 	}
 
@@ -140,19 +170,17 @@ public:
 		{
 			everyFewIterations(T,maxT,this);
 			randomSampleIndex = rand() % data.getDigits().size();
-			closestPrototype = getClosestPrototypeIndices(data.getDigits()[randomSampleIndex]);
-			double* dev_sample;
-			cudaMalloc((void**)&dev_sample,sizeof(double)*sampleDim);
-			cudaMemcpy(dev_sample,data.getDigits()[randomSampleIndex].getShades(),sizeof(double)*sampleDim,cudaMemcpyHostToDevice);
-			dev_updateNeighbours<<<mapWidth*mapHeight,1>>>(closestPrototype.first, closestPrototype.second, learningRate, neighbourRadius, dev_sample, sampleDim,  mapWidth, mapHeight, dev_map);
-			cudaFree(dev_sample);
+			closestPrototype = getClosestPrototypeIndices(randomSampleIndex,sampleDim);
+			
+			// cudaMemcpy(dev_sample,data.getDigits()[randomSampleIndex].getShades(),sizeof(double)*sampleDim,cudaMemcpyHostToDevice);
+			dev_updateNeighbours<<<mapWidth*mapHeight,1>>>(closestPrototype.first, closestPrototype.second, learningRate, neighbourRadius, dev_samples+randomSampleIndex*sampleDim, sampleDim,  mapWidth, mapHeight, dev_map);
 
 			learningRate = initiallearningrate * normal_pdf(T, 0, maxT / 3);
 			neighbourRadius = std::max(0.05, (std::max(mapWidth, mapHeight) / windowSmallness) * (maxT - T) / maxT /*normal_pdf( T, 0, maxT)*/);
 
 			T++;
 		}
-
+		copy_map_from_device(sampleDim,mapWidth,mapHeight);
 		std::cout << "[SOM] Ran for " << T << "generations" << std::endl;
 	}
 
@@ -213,8 +241,6 @@ public:
 		double d;
 		
 		forEachPrototype([&](digit &proto, int i, int j) {
-	
-			cudaMemcpy(_map[i][j].getShades(),dev_map + sampleDim*(i*mapWidth + j),sizeof(double)*sampleDim,cudaMemcpyDeviceToHost);
 			d = proto - sample;
 			if (d < minDist)
 			{
@@ -225,7 +251,9 @@ public:
 		return minDist;
 	}
 
+
 private:
+
 	void forEachPrototype(std::function<void(digit &, int, int)> &&f)
 	{
 		for (int i = 0; i < mapHeight; i++)
@@ -236,20 +264,10 @@ private:
 			}
 		}
 	}
-
 	
-	
-	std::pair<int, int> getClosestPrototypeIndices(const digit &sample)
+	std::pair<int, int> getClosestPrototypeIndices(int randomSampleIndex, int dim)
 	{
-			int dim = sample.dimension();
-			double* dev_distance; 
-			cudaMalloc((void**)&dev_distance,sizeof(double)*mapWidth*mapHeight);
-			// mapwidth * mapheight
-			double* dev_sample;
-			cudaMalloc((void**)&dev_sample,sizeof(double)*dim);
-			cudaMemcpy((double*)dev_sample,sample.getShades(),sizeof(double)*dim,cudaMemcpyHostToDevice);
-
-			dev_getDistances<<<mapWidth*mapHeight,1>>>(dev_sample,dev_map,dim,dev_distance);
+			dev_getDistances<<<mapWidth*mapHeight,1>>>(dev_samples+randomSampleIndex*dim,dev_map,dim,dev_distance);
 
 			double distances[mapWidth*mapHeight];
 			cudaMemcpy((double*)distances,dev_distance,sizeof(double)*mapWidth*mapHeight,cudaMemcpyDeviceToHost);
@@ -267,9 +285,6 @@ private:
 					}
 				}
 			}
-
-			cudaFree(dev_distance);
-			cudaFree(dev_sample);
 
 			if(maxcuda_i >= mapHeight || maxcuda_j >= mapWidth){
 				std::cerr<<"Error: please normalize your data properly, could not handle distance, it is inf!"<<std::endl;
@@ -300,5 +315,7 @@ private:
 	int sampleDim;
 	// CUDA
 	double* dev_map;
+	double* dev_samples;
+	double* dev_distance;
 };
 #endif

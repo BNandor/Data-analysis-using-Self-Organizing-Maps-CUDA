@@ -1,16 +1,16 @@
 #ifndef OCRDIGITSET_H
 #define OCRDIGITSET_H
 
+#include "digit.cu"
 #include <algorithm>
 #include <fstream>
 #include <limits>
 #include <math.h>
+#include <sstream>
 #include <stdlib.h>
 #include <string.h>
 #include <time.h>
 #include <vector>
-
-#include "digit.cu"
 
 class digitSet {
 protected:

@@ -376,7 +376,7 @@ struct configuration {
     }
 };
 
-bool classify(std::vector<SelfOrganizingMap>& maps, const digit& sample)
+int classify(std::vector<SelfOrganizingMap>& maps, const digit& sample)
 {
     double minDist = std::numeric_limits<double>::max();
     double d;
@@ -391,7 +391,7 @@ bool classify(std::vector<SelfOrganizingMap>& maps, const digit& sample)
         }
         i++;
     });
-    return sample.getValue() == closestMapIndex;
+    return closestMapIndex;
 }
 } // namespace SOM
 #endif

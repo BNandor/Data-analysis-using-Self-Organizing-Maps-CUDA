@@ -1,6 +1,8 @@
 #include "SOM.cu"
+#include "confusion_matrix.cu"
 #include "crossvalidation.cu"
 #include "io.cu"
+
 #include <algorithm>
 #include <fstream>
 #include <iostream>
@@ -89,9 +91,29 @@ double sampleClassificationAccuracy(SOM::configuration conf,
         maps[i].train(conf.maxT);
     }
     splitTest.minMaxFeatureScale();
-    double accuracy = std::count_if(splitTest.getDigits().begin(), splitTest.getDigits().end(),
-                          [&](auto& sample) { return SOM::classify(maps, sample); })
-        / (float)splitTest.getDigits().size();
+    confusion_matrix::matrix confusionMatrix(conf.classCount, std::vector<int>(conf.classCount, 0));
+    std::for_each(splitTest.getDigits().begin(), splitTest.getDigits().end(),
+        [&](auto& sample) { ++confusionMatrix[SOM::classify(maps, sample)][sample.getValue()]; });
+    confusion_matrix::print_matrix(std::cout, confusionMatrix, conf.classCount);
+    double accuracy = confusion_matrix::accuracy(confusionMatrix, conf.classCount);
+
+    // Precision
+    std::vector<double> positive_precisions = confusion_matrix::positive_precisions(confusionMatrix,conf.classCount);
+    std::cout<<"Precisions"<<std::endl;
+    std::for_each(positive_precisions.begin(),positive_precisions.end(),[](double pr){std::cout<<" "<<pr;});
+    std::cout<<std::endl;
+
+    // Sensitivity
+    std::vector<double> sensitivities = confusion_matrix::sensitivity(confusionMatrix,conf.classCount);
+    std::cout<<"Sensitivities"<<std::endl;
+    std::for_each(sensitivities.begin(),sensitivities.end(),[](double se){std::cout<<" "<<se;});
+    std::cout<<std::endl;
+
+     // Fscore
+     std::vector<double> fscores = confusion_matrix::fscore(positive_precisions,sensitivities);
+     std::cout<<"Fscores"<<std::endl;
+     std::for_each(fscores.begin(),fscores.end(),[](double fs){std::cout<<" "<<fs;});
+     std::cout<<std::endl;
     return accuracy;
 }
 

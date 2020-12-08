@@ -42,11 +42,8 @@ public:
         copy_samples_to_device(sampleDim);
     }
 
-    SelfOrganizingMap(const SelfOrganizingMap& other)
+    SelfOrganizingMap(const SelfOrganizingMap& other):data(other.data),_map(other._map)
     {
-        data = other.data;
-        _map = other._map;
-
         featuresMinMax = other.featuresMinMax;
         mapHeight = other.mapHeight;
         mapWidth = other.mapWidth;
@@ -304,6 +301,8 @@ private:
                     cuminDist = *(distances + i * mapWidth + j);
                     maxcuda_i = i;
                     maxcuda_j = j;
+                }else{
+                // std::cout<<"dist"<<*(distances + i * mapWidth + j)<<std::endl;
                 }
             }
         }

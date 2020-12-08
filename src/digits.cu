@@ -75,7 +75,7 @@ SOM::SelfOrganizingMap trainSingleSOM(io::argumentOptions options)
 double sampleClassificationAccuracy(SOM::configuration conf,
     digitSet& splitTrain, digitSet& splitTest)
 {
-    digitSet filtered[conf.classCount];
+    std::vector<digitSet> filtered(conf.classCount,digitSet(conf.digitW, conf.digitH));
     for (int i = 0; i < conf.classCount; i++) {
         filtered[i] = filterByValue(splitTrain, i);
     }

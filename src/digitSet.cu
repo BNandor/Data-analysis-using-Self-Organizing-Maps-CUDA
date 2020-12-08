@@ -19,7 +19,7 @@ protected:
     int _height;
 
 public:
-    digitSet(int width = 8, int height = 8)
+    digitSet(int width, int height = 1)
         : _width(width)
         , _height(height)
     {
@@ -52,6 +52,7 @@ public:
                 maximum = digitMaxshade;
             }
         });
+        
         std::for_each(_digits.begin(), _digits.end(), [&](digit& digit) {
             digit.minMaxNormalize(minimum, maximum);
         });
@@ -64,8 +65,9 @@ public:
         , _height(other._height)
     {
     }
+    int getWidth()const {return _width;}
+    int getHeight()const {return _height;}
     const digit& getDigit(int index) const { return _digits[index]; }
-
     const std::vector<digit>& getDigits() const { return _digits; }
 
     int size() const { return _digits.size(); }
@@ -95,7 +97,7 @@ public:
 
 digitSet filterByValue(const digitSet& tofilter, double value)
 {
-    digitSet filtered;
+    digitSet filtered(tofilter.getWidth(),tofilter.getHeight());
     for (int i = 0; i < tofilter.size(); i++) {
         if (tofilter.getDigit(i).getValue() == value) {
             filtered.add(tofilter.getDigit(i));

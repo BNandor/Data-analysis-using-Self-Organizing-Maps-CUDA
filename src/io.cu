@@ -114,7 +114,7 @@ namespace SOM {
             std::cerr << "could not open file" << testName << std::endl;
             exit(-1);
         }
-        digitSet test;
+        digitSet test(conf.digitW, conf.digitH);
         testinput >> test;
         return test;
     }

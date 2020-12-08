@@ -6,7 +6,7 @@ clang-format
 *.lo
 *.o
 *.obj
-
+SOM
 # Precompiled Headers
 *.gch
 *.pch

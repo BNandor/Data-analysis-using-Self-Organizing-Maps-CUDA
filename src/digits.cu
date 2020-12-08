@@ -12,7 +12,7 @@
 #include <vector>
 
 SOM::SelfOrganizingMap trainSingleSOM(io::argumentOptions options);
-std::vector<double> classificationAccuracies(io::argumentOptions options);
+std::vector<std::pair<double,int> > classificationAccuracies(io::argumentOptions options);
 
 int main(int argc, const char* argv[])
 {
@@ -29,19 +29,22 @@ int main(int argc, const char* argv[])
         som.printMapToStream(output);
         output.close();
     } else {
-        std::vector<double> accuracies = classificationAccuracies(options);
-
-        std::cout << "[crossvalidate] accuracies";
-        std::for_each(accuracies.begin(), accuracies.end(),
-            [](double accuracy) { std::cout << accuracy << " "; });
+        std::vector<std::pair<double,int> > accuracies_and_size = classificationAccuracies(options);
+        std::vector<double> accuracies;
+        std::for_each(accuracies_and_size.begin(),accuracies_and_size.end(),[&accuracies](std::pair<double,int> p){accuracies.push_back(p.first);});
+        std::cout << "[crossvalidate] accuracies_and_size\n";
+        std::for_each(accuracies_and_size.begin(), accuracies_and_size.end(),
+            [](std::pair<double,int>  accuracyp) { std::cout << accuracyp.first << " +-"<<1.96*(sqrt(accuracyp.first * (1 - accuracyp.first)/accuracyp.second))<<" with 95% confidence"<<std::endl; });
         std::cout << std::endl;
         double sum = 0;
-        std::for_each(accuracies.begin(), accuracies.end(),
-            [&sum](double accuracy) { sum += accuracy; });
-
-        if (accuracies.size() != 0) {
-            std::cout << "Average accuracy: " << sum / accuracies.size() << std::endl;
+        std::for_each(accuracies_and_size.begin(), accuracies_and_size.end(),
+            [&sum](std::pair<double,int> accuracyp) { sum += accuracyp.first; });
+        std::pair<double,double> accuracy_confidence = confusion_matrix::confidence95(accuracies);
+        if (accuracies_and_size.size() != 0) {
+            std::cout << "Accuracy with 95% confidence " << accuracy_confidence.first << " +-"<<accuracy_confidence.second << std::endl;
         }
+
+
     }
     return 0;
 }
@@ -98,38 +101,44 @@ double sampleClassificationAccuracy(SOM::configuration conf,
     double accuracy = confusion_matrix::accuracy(confusionMatrix, conf.classCount);
 
     // Precision
-    std::vector<double> positive_precisions = confusion_matrix::positive_precisions(confusionMatrix,conf.classCount);
-    std::cout<<"Precisions"<<std::endl;
-    std::for_each(positive_precisions.begin(),positive_precisions.end(),[](double pr){std::cout<<" "<<pr;});
-    std::cout<<std::endl;
+    std::vector<double> positive_precisions = confusion_matrix::positive_precisions(confusionMatrix, conf.classCount);
+    std::cout << "Precisions" << std::endl;
+    std::for_each(positive_precisions.begin(), positive_precisions.end(), [](double pr) { std::cout << " " << pr; });
+    std::cout << std::endl;
 
     // Sensitivity
-    std::vector<double> sensitivities = confusion_matrix::sensitivity(confusionMatrix,conf.classCount);
-    std::cout<<"Sensitivities"<<std::endl;
-    std::for_each(sensitivities.begin(),sensitivities.end(),[](double se){std::cout<<" "<<se;});
-    std::cout<<std::endl;
+    std::vector<double> sensitivities = confusion_matrix::sensitivity(confusionMatrix, conf.classCount);
+    std::cout << "Sensitivities" << std::endl;
+    std::for_each(sensitivities.begin(), sensitivities.end(), [](double se) { std::cout << " " << se; });
+    std::cout << std::endl;
 
-     // Fscore
-     std::vector<double> fscores = confusion_matrix::fscore(positive_precisions,sensitivities);
-     std::cout<<"Fscores"<<std::endl;
-     std::for_each(fscores.begin(),fscores.end(),[](double fs){std::cout<<" "<<fs;});
-     std::cout<<std::endl;
+    // Fscore
+    std::vector<double> fscores = confusion_matrix::fscore(positive_precisions, sensitivities);
+    std::cout << "Fscores" << std::endl;
+    std::for_each(fscores.begin(), fscores.end(), [](double fs) { std::cout << " " << fs; });
+    std::cout << std::endl;
+
+    // AUC
+    std::vector<double> areas = confusion_matrix::AUC(confusionMatrix, conf.classCount);
+    std::cout << "AUC" << std::endl;
+    std::for_each(areas.begin(), areas.end(), [](double area) { std::cout << " " << area; });
+    std::cout << std::endl;
     return accuracy;
 }
 
-std::vector<double> classificationAccuracies(io::argumentOptions options)
+std::vector<std::pair<double,int> > classificationAccuracies(io::argumentOptions options)
 {
     SOM::configuration conf = io::SOM::parse_SOM_configuration(options);
     conf.printConfiguration(std::cout);
     digitSet train = io::SOM::parseInputSet(options, conf);
     digitSet test = io::SOM::parseTestingSet(options, conf);
 
-    std::vector<double> accuracies;
+    std::vector<std::pair<double,int>> accuracies;
     int k = 5;
     for (int i = 0; i < k; ++i) {
         std::pair<digitSet, digitSet> splitData = crossvalidate_split(train, test, k, i);
-        accuracies.push_back(
-            sampleClassificationAccuracy(conf, splitData.first, splitData.second));
+        accuracies.push_back(std::make_pair(
+            sampleClassificationAccuracy(conf, splitData.first, splitData.second),splitData.second.getDigits().size()));
     }
     return accuracies;
 }

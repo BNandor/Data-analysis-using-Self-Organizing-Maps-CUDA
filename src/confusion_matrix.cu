@@ -3,6 +3,11 @@
 #include <algorithm>
 #include <iostream>
 #include <utility>
+/**
+ * 
+ * 
+ * 
+ */
 
 namespace confusion_matrix {
 typedef std::vector<std::vector<int>> matrix;
@@ -109,9 +114,9 @@ std::vector<double> specificity(matrix m, int dim)
         for (int j = 0; j < dim; j++) {
             FN += m[i][j];
         }
-        FN-=TP;
+        FN -= TP;
         int TN = ALL - FP - FN - TP;
-        
+
         specificities.push_back(TN / (double)(TN + FP));
     }
     return specificities;
@@ -131,50 +136,54 @@ std::vector<double> fscore(std::vector<double> precisions, std::vector<double> s
     return fscores;
 }
 
-double sampleVariance(std::vector<double> samples,double mean) {
-    if(samples.size() == 1){
+double sampleVariance(std::vector<double> samples, double mean)
+{
+    if (samples.size() == 1) {
         return 0;
     }
-    double sum =0;
+    double sum = 0;
     std::for_each(samples.begin(), samples.end(),
-    [&sum,&mean](double sample) { sum += (sample - mean)*(sample - mean); });
+        [&sum, &mean](double sample) { sum += (sample - mean) * (sample - mean); });
     return sum / (samples.size() - 1);
 }
 
-double sampleVariance(std::vector<double> samples) {
-    if(samples.size() == 1){
+double sampleVariance(std::vector<double> samples)
+{
+    if (samples.size() == 1) {
         return 0;
     }
-    double sum =0;
+    double sum = 0;
     std::for_each(samples.begin(), samples.end(),
-            [&sum](double sample) { sum += sample; });
+        [&sum](double sample) { sum += sample; });
     double mean = sum / samples.size();
     sum = 0;
     std::for_each(samples.begin(), samples.end(),
-    [&sum,&mean](double sample) { sum += (sample - mean)*(sample - mean); });
+        [&sum, &mean](double sample) { sum += (sample - mean) * (sample - mean); });
     return sum / (samples.size() - 1);
 }
 
-std::pair<double,double> confidence95(std::vector<double> samples) {
-    if(samples.size() == 1){
-        return std::make_pair(0,0);
+std::pair<double, double> confidence95(std::vector<double> samples)
+{
+    if (samples.size() == 1) {
+        return std::make_pair(0, 0);
     }
-    double sum =0;
+    double sum = 0;
     std::for_each(samples.begin(), samples.end(),
-            [&sum](double sample) { sum += sample; });
+        [&sum](double sample) { sum += sample; });
     double mean = sum / samples.size();
-    double sampleStandardDeviation = sqrt(sampleVariance(samples,mean));
+    double sampleStandardDeviation = sqrt(sampleVariance(samples, mean));
     double standardError = sampleStandardDeviation / sqrt((double)samples.size());
-    return std::make_pair(mean,1.96 * standardError);
+    return std::make_pair(mean, 1.96 * standardError);
 }
 
-std::vector<double> AUC(matrix m,int dim) {
-    std::vector<double> sensitivities = sensitivity(m,dim);
-    std::vector<double> specificities = specificity(m,dim);
+std::vector<double> AUC(matrix m, int dim)
+{
+    std::vector<double> sensitivities = sensitivity(m, dim);
+    std::vector<double> specificities = specificity(m, dim);
     std::vector<double> areas;
 
-    for(int i=0;i<dim;i++){
-        areas.push_back((sensitivities[i] + specificities[i])/2);
+    for (int i = 0; i < dim; i++) {
+        areas.push_back((sensitivities[i] + specificities[i]) / 2);
     }
     return areas;
 }

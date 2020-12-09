@@ -10,13 +10,13 @@
 std::pair<digitSet, digitSet> random_split(const digitSet& train,
     const digitSet& test)
 {
-    if(train.getDigits().size() == 0 || test.getDigits().size() == 0) {
-        std::cerr<<"[crossvalidation::random_split] error, train or test empty";
+    if (train.getDigits().size() == 0 || test.getDigits().size() == 0) {
+        std::cerr << "[crossvalidation::random_split] error, train or test empty";
         exit(1);
     }
 
-    digitSet splitTrain(train.getDigits()[0].getWidth(),train.getDigits()[0].getHeight());
-    digitSet splitTest(train.getDigits()[0].getWidth(),train.getDigits()[0].getHeight());
+    digitSet splitTrain(train.getDigits()[0].getWidth(), train.getDigits()[0].getHeight());
+    digitSet splitTest(train.getDigits()[0].getWidth(), train.getDigits()[0].getHeight());
     std::vector<int> indices;
     int trainSize = train.getDigits().size();
     int testSize = test.getDigits().size();
@@ -49,14 +49,14 @@ std::pair<digitSet, digitSet> crossvalidate_split(const digitSet& train,
     const digitSet& test, int k,
     int testFractionIndex)
 {
-    if(train.getDigits().size() == 0 || test.getDigits().size() == 0) {
-        std::cerr<<"[crossvalidation::random_split] error, train or test empty";
+    if (train.getDigits().size() == 0 || test.getDigits().size() == 0) {
+        std::cerr << "[crossvalidation::random_split] error, train or test empty";
         exit(1);
     }
 
-    digitSet splitTrain(train.getDigits()[0].getWidth(),train.getDigits()[0].getHeight());
-    digitSet splitTest(train.getDigits()[0].getWidth(),train.getDigits()[0].getHeight());
-    
+    digitSet splitTrain(train.getDigits()[0].getWidth(), train.getDigits()[0].getHeight());
+    digitSet splitTest(train.getDigits()[0].getWidth(), train.getDigits()[0].getHeight());
+
     std::vector<int> indices;
     int trainSize = train.getDigits().size();
     int testSize = test.getDigits().size();

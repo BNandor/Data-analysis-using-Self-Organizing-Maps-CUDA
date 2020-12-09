@@ -15,10 +15,30 @@
 #include <time.h>
 #include <vector>
 
+/** \brief The namespace of SOM related classes, methods and structures */
+/** This namespace contains the SelfOrganizingMap class, a structure that configures the training of it, 
+ *  and a method used to classify query points.
+ * */
 namespace SOM {
+typedef std::vector<std::vector<digit>> SOMContainer;
+/** \brief 
+ * The class that implements the Self Organizing Map model.*/
+/** 
+ * This class encapsulates a dataset of training points on which 
+ * the model is trained and the actual map. The CUDA implementation copies the
+ * trainig points and the map to the device memory and operates on them inplace. 
+ * After the training finished, the trained map is copied back to the host user memory.
+ * */
 class SelfOrganizingMap {
 public:
-    SelfOrganizingMap(const digitSet& points, int mapWidth, int mapHeight)
+    /** The constructor takes a set of points and the dimensions of the map as parameter. 
+     * It normalizes the inputs in order to prevent the explosion of gradients.
+     * Afterwards it initializes the map randomly, allocates memory on the CUDA device
+     * for the samples and the map and copies them there.
+    */
+    SelfOrganizingMap(const digitSet& points /**< The training points on which the map will be trained.*/,
+        int mapWidth, /**< The width of the map.*/
+        int mapHeight /**< The height of the map.*/)
         : _map(mapHeight, std::vector<digit>(mapWidth))
         , data(points)
         , mapHeight(mapHeight)
@@ -41,8 +61,12 @@ public:
         copy_map_to_device(digitWidth * digitHeight, mapWidth, mapHeight);
         copy_samples_to_device(sampleDim);
     }
-
-    SelfOrganizingMap(const SelfOrganizingMap& other):data(other.data),_map(other._map)
+    /** The copy constructor of the class copies the samples and map both from the host memory
+     * and the CUDA device memory.
+     * */
+    SelfOrganizingMap(const SelfOrganizingMap& other)
+        : data(other.data)
+        , _map(other._map)
     {
         featuresMinMax = other.featuresMinMax;
         mapHeight = other.mapHeight;
@@ -56,8 +80,11 @@ public:
             sizeof(double) * sampleDim * data.getDigits().size(),
             cudaMemcpyDeviceToDevice);
     }
-
-    void setup_CUDA(int sampleDim, int sampleCount)
+    /** 
+     * Allocates memory on the CUDA device for the provided samples, the map 
+     * and the intermediary distances
+     * */
+    void setup_CUDA(int sampleDim /**< The dimensionality of an input sample*/, int sampleCount /**< The number of samples provided to the map*/)
     {
         cudaMalloc((void**)&dev_samples, sizeof(double) * sampleDim * sampleCount);
         cudaMalloc((void**)&dev_distance, sizeof(double) * mapWidth * mapHeight);
@@ -65,6 +92,7 @@ public:
             sizeof(double) * sampleDim * mapWidth * mapHeight);
     }
 
+    /** \brief Copies the samples from the host memory to CUDA device memory.*/
     void copy_samples_to_device(int sampleDim)
     {
         for (int i = 0; i < data.getDigits().size(); ++i) {
@@ -74,6 +102,7 @@ public:
         }
     }
 
+    /** \brief Copies the map from the host memory to CUDA device memory.*/
     void copy_map_to_device(int dim, int mapWidth, int mapHeight)
     {
         for (int i = 0; i < mapHeight; i++) {
@@ -85,6 +114,7 @@ public:
         }
     }
 
+    /** \brief Copies the resulting trained map from the CUDA device back to the host memory.*/
     void copy_map_from_device(int sampleDim, int mapWidth, int mapHeight)
     {
         for (int i = 0; i < mapHeight; i++) {
@@ -95,7 +125,7 @@ public:
             }
         }
     }
-
+    /** \brief Deallocates all of the allocated memory by the class on the CUDA device. */
     ~SelfOrganizingMap()
     {
         if (dev_map != nullptr) {
@@ -109,8 +139,12 @@ public:
         }
     }
 
-    void initializeRandomSOM(std::vector<std::vector<digit>>& som, int dimx,
-        int dimy)
+    /** \brief Initializes the map in a random manner.*/
+    /** Initializes each representative node within the map using 
+     * random values within the minimum and maximum values seen in the sample dataset. */
+    void initializeRandomSOM(SOM::SOMContainer& som /**< The map that needs to be initialized.*/,
+        int dimx /**< The width of the images in pixels.*/,
+        int dimy /**< The height of the images in pixels.*/)
     {
         std::for_each(som.begin(), som.end(),
             [dimx, dimy, this](std::vector<digit>& v) {
@@ -122,8 +156,12 @@ public:
             });
     }
 
-    void initializeSampledSOM(std::vector<std::vector<digit>>& som, int dimx,
-        int dimy)
+    /** \brief Initializes the map in a random manner.*/
+    /** Initializes each representative node within the map using 
+     * random samples from the training dataset. */
+    void initializeSampledSOM(SOM::SOMContainer& som, /**< The map that needs to be initialized.*/,
+        int dimx /**< The width of the images in pixels.*/,
+        int dimy /**< The height of the images in pixels.*/)
     {
         std::for_each(
             som.begin(), som.end(), [this, dimx, dimy](std::vector<digit>& v) {
@@ -138,7 +176,10 @@ public:
         return !(i < 0 || j < 0 || i >= mapHeight || j >= mapWidth);
     }
 
-    double normal_pdf(double x, double m, double s)
+    /** Return the value of x in the kernel of the Gaussian Probability Density Function. */
+    double normal_pdf(double x /**< The value at which the kernel needs to be evaluated.*/,
+        double m /**< The mean of the kernel. */,
+        double s /**< The sigma of the kernel. */)
     {
         // static const double inv_sqrt_2pi = 0.3989422804014327;
         double a = (x - m) / s;
@@ -147,13 +188,18 @@ public:
         return std::exp(-0.5f * a * a);
     }
 
+    /** The euclidean distance between two 2D points. */
     double euclideanDistance(int i1, int j1, int i2, int j2)
     {
         return sqrt((double)(i1 - i2) * (i1 - i2) + (double)(j1 - j2) * (j1 - j2));
     }
 
-    double normalNeighbourCoefficient(int i1, int j1, int i2, int j2,
-        double radius)
+    /** Calculates the neighbouring coefficients with a given radius from point (i1,j1) to point (i2,j2). */
+    double normalNeighbourCoefficient(int i1 /**<The y index of the first neuron */,
+        int j1 /**<The x index of the first neuron */,
+        int i2 /**<The y index of the second neuron */,
+        int j2 /**<The x index of the second neuron */,
+        double radius /**<The radius of the neighbouring function. */)
     {
 #ifdef safe
 
@@ -170,9 +216,16 @@ public:
         // (std::max(mapWidth,mapHeight)/windowSmallness));
         return normal_pdf(euclideanDist, 0, radius);
     }
+    /** \brief Returns the internal map. */
+    SOM::SOMContainer& getMap() { return _map; }
 
-    std::vector<std::vector<digit>>& getMap() { return _map; }
-
+    /** \brief The training method of the map. Results in a trained model on the host memory side. */
+    /** This method trains the model for a given number of iterations that it receives as parameter. 
+     *  It also receives a callback function in order to facilitate the capturing the frames for the animation. 
+     *  Each iteration it samples a random sample from the dataset and updates the model accordingly.
+     *  The best matching unit search is parallelized and so is the neighbourhood update phase.
+     *  After the maximum number of iterations it copies the map from CUDA device to host memory.
+     * */
     void train(
         int maxT,
         std::function<void(int, int, SelfOrganizingMap*)>&& everyFewIterations =
@@ -210,6 +263,7 @@ public:
         std::cout << "[SOM] Ran for " << T << "generations" << std::endl;
     }
 
+    /** \brief Searches for the sample that is closest to a given neuron within the training data (host side).*/
     digit getClosestSample(int i, int j)
     {
 #ifdef safe
@@ -231,9 +285,9 @@ public:
         return data.getDigits()[minid];
     }
 
+    /** \brief Prints the labeling of the neurons according to the category of their closest sample.*/
     void printMap()
     {
-        // Copy map from device
         for (int i = 0; i < mapHeight; i++) {
             for (int j = 0; j < mapWidth; j++) {
                 std::cout << getClosestSample(i, j).getValue() << "-";
@@ -242,6 +296,8 @@ public:
         }
     }
 
+    /** \brief Prints the map to an output stream.*/
+    /** Prints the dimensions of the map, afterwards it prints the actual neuron weights to an output stream.*/
     void printMapToStream(std::ostream& out)
     {
         // Copy map from device
@@ -255,7 +311,7 @@ public:
             }
         }
     }
-
+    /** \brief Calculates the distance from a sample to its best matching unit.*/
     double getClosestPrototypeDistance(const digit& sample)
     {
         double minDist = std::numeric_limits<double>::max();
@@ -280,9 +336,9 @@ private:
             }
         }
     }
-
-    std::pair<int, int> getClosestPrototypeIndices(int randomSampleIndex,
-        int dim)
+    /** \brief calculates the indices of the neurons that are closest to a random training sample.*/
+    std::pair<int, int> getClosestPrototypeIndices(int randomSampleIndex /**<The index of the randomly selected sample in the dataset.*/,
+        int dim /** the dimensionality of the samples*/)
     {
         dev_getDistances<<<mapWidth * mapHeight, 1>>>(
             dev_samples + randomSampleIndex * dim, dev_map, dim, dev_distance);
@@ -301,8 +357,8 @@ private:
                     cuminDist = *(distances + i * mapWidth + j);
                     maxcuda_i = i;
                     maxcuda_j = j;
-                }else{
-                // std::cout<<"dist"<<*(distances + i * mapWidth + j)<<std::endl;
+                } else {
+                    // std::cout<<"dist"<<*(distances + i * mapWidth + j)<<std::endl;
                 }
             }
         }
@@ -316,9 +372,11 @@ private:
         return std::make_pair(maxcuda_i, maxcuda_j);
     }
 
-    double updateNeighbours(std::pair<int, int> closestPrototype,
-        double learningRate, double neighbourRadius,
-        const digit& sample)
+    /** Updates the weights of all of the neighbours of the selected best matching unit.*/
+    double updateNeighbours(std::pair<int, int> closestPrototype /**< The indices of the best matching unit.*/,
+        double learningRate /** The learning rate of the model.*/,
+        double neighbourRadius /** The radius of the neighbourhood*/,
+        const digit& sample /** The actually selected sample.*/)
     {
         double closestMaxAbsDistance = sample.minus(_map[closestPrototype.first][closestPrototype.second])
                                            .getMaxAbsShade();
@@ -331,32 +389,39 @@ private:
         return closestMaxAbsDistance;
     }
 
-    digitSet data;
-    std::vector<std::vector<digit>> _map;
-    std::pair<double, double> featuresMinMax;
-    int mapHeight;
-    int mapWidth;
-    int sampleDim;
+    digitSet data /**< The set of training datapoints.*/;
+    SOM::SOMContainer _map /**< The trained map of the model.*/;
+    std::pair<double, double> featuresMinMax /**< The minimum and maximum value over all of the features over all of the datapoints.*/;
+    int mapHeight /**< The height of the map.*/;
+    int mapWidth /**< The width of the map.*/;
+    int sampleDim /**< The dimensionality of each training datapoint.*/;
+
     // CUDA
-    double* dev_map;
-    double* dev_samples;
-    double* dev_distance;
+    double* dev_map /**<The memory location of the start of the map on the CUDA device.*/;
+    double* dev_samples /**<The memory location of the start of the training datapoints on the CUDA device.*/;
+    double* dev_distance /**<The memory location of the start of the array of calculated distances on the CUDA device.*/;
 };
+/** \brief
+ * Structure that provides the configuration of the SOM.
+ * */
 
 struct configuration {
-    int digitW;
-    int digitH;
+    int digitW; /**< Width of the input image in pixels */
+    int digitH; /**< Height of the input image in pixels */
 
-    int mapW;
-    int mapH;
+    int mapW; /**< Width of the SOM structure. */
+    int mapH; /**< Height of the SOM structure. */
 
-    int maxT;
-    bool animation;
-    std::string animationPath;
-    int frameCount;
-    bool classification;
-    int classCount;
+    int maxT; /**< Number of maximum iterations during training. */
+    bool animation; /**< This flags that the user wants to save intermediate states during training. */
+    std::string animationPath; /**< The path to save resulting animation frames to.*/
+    int frameCount; /**< The number of frames that need to be saved. */
+    bool classification; /**< This flags that classification procedure is enabled. */
+    int classCount; /**< The number of classes into which the images have to be categorized in.*/
 
+    /** \brief
+     *  Prints all of the configuration parameters into an output stream.
+     * */
     void printConfiguration(std::ostream& out)
     {
         out << "[SOM] image dimensions : " << digitW << " x " << digitH
@@ -374,8 +439,14 @@ struct configuration {
         }
     }
 };
-
-int classify(std::vector<SelfOrganizingMap>& maps, const digit& sample)
+/** \brief
+ * Classifies a sample image into one of the categories represented by the maps.
+ * */
+/**
+ * This method claculates the distance from the sample point to every map. 
+ * The sample is then classified according to the class of the map to which it is closest.
+ * */
+int classify(std::vector<SelfOrganizingMap>& maps /**< The SOMs that were trained on distinct classes of the dataset.*/, const digit& sample /**< The query point that needs to be classified*/)
 {
     double minDist = std::numeric_limits<double>::max();
     double d;

@@ -12,7 +12,7 @@
 #include <vector>
 
 SOM::SelfOrganizingMap trainSingleSOM(io::argumentOptions options);
-std::vector<std::pair<double,int> > classificationAccuracies(io::argumentOptions options);
+std::vector<std::pair<double, int>> classificationAccuracies(io::argumentOptions options);
 
 int main(int argc, const char* argv[])
 {
@@ -29,22 +29,20 @@ int main(int argc, const char* argv[])
         som.printMapToStream(output);
         output.close();
     } else {
-        std::vector<std::pair<double,int> > accuracies_and_size = classificationAccuracies(options);
+        std::vector<std::pair<double, int>> accuracies_and_size = classificationAccuracies(options);
         std::vector<double> accuracies;
-        std::for_each(accuracies_and_size.begin(),accuracies_and_size.end(),[&accuracies](std::pair<double,int> p){accuracies.push_back(p.first);});
+        std::for_each(accuracies_and_size.begin(), accuracies_and_size.end(), [&accuracies](std::pair<double, int> p) { accuracies.push_back(p.first); });
         std::cout << "[crossvalidate] accuracies_and_size\n";
         std::for_each(accuracies_and_size.begin(), accuracies_and_size.end(),
-            [](std::pair<double,int>  accuracyp) { std::cout << accuracyp.first << " +-"<<1.96*(sqrt(accuracyp.first * (1 - accuracyp.first)/accuracyp.second))<<" with 95% confidence"<<std::endl; });
+            [](std::pair<double, int> accuracyp) { std::cout << accuracyp.first << " +-" << 1.96 * (sqrt(accuracyp.first * (1 - accuracyp.first) / accuracyp.second)) << " with 95% confidence" << std::endl; });
         std::cout << std::endl;
         double sum = 0;
         std::for_each(accuracies_and_size.begin(), accuracies_and_size.end(),
-            [&sum](std::pair<double,int> accuracyp) { sum += accuracyp.first; });
-        std::pair<double,double> accuracy_confidence = confusion_matrix::confidence95(accuracies);
+            [&sum](std::pair<double, int> accuracyp) { sum += accuracyp.first; });
+        std::pair<double, double> accuracy_confidence = confusion_matrix::confidence95(accuracies);
         if (accuracies_and_size.size() != 0) {
-            std::cout << "Accuracy with 95% confidence " << accuracy_confidence.first << " +-"<<accuracy_confidence.second << std::endl;
+            std::cout << "Accuracy with 95% confidence " << accuracy_confidence.first << " +-" << accuracy_confidence.second << std::endl;
         }
-
-
     }
     return 0;
 }
@@ -75,7 +73,7 @@ SOM::SelfOrganizingMap trainSingleSOM(io::argumentOptions options)
 double sampleClassificationAccuracy(SOM::configuration conf,
     digitSet& splitTrain, digitSet& splitTest)
 {
-    std::vector<digitSet> filtered(conf.classCount,digitSet(conf.digitW, conf.digitH));
+    std::vector<digitSet> filtered(conf.classCount, digitSet(conf.digitW, conf.digitH));
     for (int i = 0; i < conf.classCount; i++) {
         filtered[i] = filterByValue(splitTrain, i);
     }
@@ -126,19 +124,19 @@ double sampleClassificationAccuracy(SOM::configuration conf,
     return accuracy;
 }
 
-std::vector<std::pair<double,int> > classificationAccuracies(io::argumentOptions options)
+std::vector<std::pair<double, int>> classificationAccuracies(io::argumentOptions options)
 {
     SOM::configuration conf = io::SOM::parse_SOM_configuration(options);
     conf.printConfiguration(std::cout);
     digitSet train = io::SOM::parseInputSet(options, conf);
     digitSet test = io::SOM::parseTestingSet(options, conf);
 
-    std::vector<std::pair<double,int>> accuracies;
+    std::vector<std::pair<double, int>> accuracies;
     int k = 5;
     for (int i = 0; i < k; ++i) {
         std::pair<digitSet, digitSet> splitData = crossvalidate_split(train, test, k, i);
         accuracies.push_back(std::make_pair(
-            sampleClassificationAccuracy(conf, splitData.first, splitData.second),splitData.second.getDigits().size()));
+            sampleClassificationAccuracy(conf, splitData.first, splitData.second), splitData.second.getDigits().size()));
     }
     return accuracies;
 }

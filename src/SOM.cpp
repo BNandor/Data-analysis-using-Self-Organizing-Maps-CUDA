@@ -159,7 +159,7 @@ public:
     /** \brief Initializes the map in a random manner.*/
     /** Initializes each representative node within the map using 
      * random samples from the training dataset. */
-    void initializeSampledSOM(SOM::SOMContainer& som, /**< The map that needs to be initialized.*/,
+    void initializeSampledSOM(SOM::SOMContainer& som /**< The map that needs to be initialized.*/,
         int dimx /**< The width of the images in pixels.*/,
         int dimy /**< The height of the images in pixels.*/)
     {

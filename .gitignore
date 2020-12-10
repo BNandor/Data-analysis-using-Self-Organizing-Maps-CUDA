@@ -35,3 +35,6 @@ SOM
 *.som
 data/*
 *.jpg
+
+# Documentation
+documentation/*

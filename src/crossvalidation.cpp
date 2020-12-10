@@ -7,8 +7,12 @@
 #include <utility>
 #include <vector>
 
-std::pair<digitSet, digitSet> random_split(const digitSet& train,
-    const digitSet& test)
+/** \brief Contains methods for the validation of models.*/
+namespace modelValidation {
+/** Splits the whole of a dataset consisting of a training and testing dataset in a random manner into new training and testing parts, 
+ * preserving the cardinalities.*/
+std::pair<digitSet, digitSet> random_split(const digitSet& train /**< The training part of the dataset.*/,
+    const digitSet& test /**< The testing part of the dataset.*/)
 {
     if (train.getDigits().size() == 0 || test.getDigits().size() == 0) {
         std::cerr << "[crossvalidation::random_split] error, train or test empty";
@@ -45,9 +49,11 @@ std::pair<digitSet, digitSet> random_split(const digitSet& train,
     return std::make_pair(splitTrain, splitTest);
 }
 
-std::pair<digitSet, digitSet> crossvalidate_split(const digitSet& train,
-    const digitSet& test, int k,
-    int testFractionIndex)
+/** Splits the dataset consisting of a training and testing part in a crossvalidating manner using a provided
+ * k fold parameter, and the index of the fold to be designated as the testing set. */
+std::pair<digitSet, digitSet> crossvalidate_split(const digitSet& train /**< The training part of the dataset.*/,
+    const digitSet& test /**< The testing part of the dataset.*/, int k /**< The number of folds of the crossvalidation.*/,
+    int testFractionIndex /**< The index of the fold to be used as testing.*/)
 {
     if (train.getDigits().size() == 0 || test.getDigits().size() == 0) {
         std::cerr << "[crossvalidation::random_split] error, train or test empty";
@@ -111,5 +117,6 @@ std::pair<digitSet, digitSet> crossvalidate_split(const digitSet& train,
     }
 
     return std::make_pair(splitTrain, splitTest);
+}
 }
 #endif

@@ -75,7 +75,7 @@ double sampleClassificationAccuracy(SOM::configuration conf,
 {
     std::vector<digitSet> filtered(conf.classCount, digitSet(conf.digitW, conf.digitH));
     for (int i = 0; i < conf.classCount; i++) {
-        filtered[i] = filterByValue(splitTrain, i);
+        filtered[i] = digitSet::filterByValue(splitTrain, i);
     }
     std::vector<SOM::SelfOrganizingMap> maps;
     for (int i = 0; i < conf.classCount; i++) {
@@ -134,7 +134,7 @@ std::vector<std::pair<double, int>> classificationAccuracies(io::argumentOptions
     std::vector<std::pair<double, int>> accuracies;
     int k = 5;
     for (int i = 0; i < k; ++i) {
-        std::pair<digitSet, digitSet> splitData = crossvalidate_split(train, test, k, i);
+        std::pair<digitSet, digitSet> splitData = modelValidation::crossvalidate_split(train, test, k, i);
         accuracies.push_back(std::make_pair(
             sampleClassificationAccuracy(conf, splitData.first, splitData.second), splitData.second.getDigits().size()));
     }

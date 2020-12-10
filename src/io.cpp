@@ -27,10 +27,15 @@
 #define CLASSIFICATION_DEFAULT_CLASS_COUNT 10
 #endif
 
+/** This namespace holds methods needed for the parsing of argument options and reading
+ *  of training and testing datasets.*/ 
 namespace io {
 
+/** \brief This type hides the container type of the argument options.*/
 typedef std::map<std::string, std::string> argumentOptions;
 
+/** Returns an argument options container that contains the configuration options 
+ * passed to the executable via CLI.*/
 argumentOptions parse_options(int argc, const char* argv[])
 {
     argumentOptions options;
@@ -47,7 +52,10 @@ argumentOptions parse_options(int argc, const char* argv[])
     return options;
 }
 
+/** This sub-namespace contains the parsing of options needed for the configuring of the SOM.*/
 namespace SOM {
+
+    /** Returns a ::SOM::configuration read from CLI.*/
     ::SOM::configuration parse_SOM_configuration(argumentOptions options)
     {
         ::SOM::configuration conf;
@@ -74,10 +82,10 @@ namespace SOM {
         return conf;
     }
 
+    /** Returns a training dataset read from files provided by the CLI arguments and SOM configuration.*/
     digitSet parseInputSet(argumentOptions options, ::SOM::configuration conf)
     {
         std::string inputName = DEFAULT_TRAINING_FILENAME;
-        std::string testName = DEFAULT_TEST_FILENAME;
 
         if (!options.count("input")) {
             std::cerr << "[SOM] please specify an input file with  input=file"
@@ -102,6 +110,7 @@ namespace SOM {
         return inputSet;
     }
 
+    /** Returns a testing dataset read from files provided by the CLI arguments and SOM configuration.*/
     digitSet parseTestingSet(argumentOptions options, ::SOM::configuration conf)
     {
         std::string testName = options["test"];

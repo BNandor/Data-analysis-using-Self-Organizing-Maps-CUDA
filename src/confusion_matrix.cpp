@@ -3,15 +3,18 @@
 #include <algorithm>
 #include <iostream>
 #include <utility>
-/**
- * 
- * 
- * 
- */
 
+/** \brief
+ * This namespace contains the methods that derive certain metrics 
+ * from a provided confusion matrix.
+ */
 namespace confusion_matrix {
+
+/** \brief This type hides the confusion matrix container implementation type. */
 typedef std::vector<std::vector<int>> matrix;
 
+/** \brief Prints the confusion matrix to an output stream.
+ * */
 void print_matrix(std::ostream& out, matrix m, int dim)
 {
     for (int i = 0; i < dim; i++) {
@@ -22,6 +25,7 @@ void print_matrix(std::ostream& out, matrix m, int dim)
     }
 }
 
+/** \brief calculates the overall accuracy of the classifier. */
 double accuracy(matrix m, int dim)
 {
     int TP = 0;
@@ -37,6 +41,9 @@ double accuracy(matrix m, int dim)
     return TP / (double)ALL;
 }
 
+/**  Calculates the positive precision (TP / (TP + FN)) of the classifier.
+ * Employs a one versus all strategy, resulting in a value for every class.
+ */
 std::vector<double> positive_precisions(matrix m, int dim)
 {
     std::vector<double> precisions;
@@ -53,30 +60,9 @@ std::vector<double> positive_precisions(matrix m, int dim)
     return precisions;
 }
 
-std::vector<double> negative_precisions(matrix m, int dim)
-{
-    std::vector<double> precisions;
-    // int ALL = 0;
-    // for (int i = 0; i < dim; i++) {
-    //     for (int j = 0; j < dim; j++) {
-    //         ALL += m[i][j];
-    //     }
-    // }
-
-    // for (int i = 0; i < dim; i++) {
-    //     int TP = m[i][i];
-    //     int FP = 0;
-    //     for (int j = 0; j < dim; j++) {
-    //         FP += m[i][j];
-    //     }
-    //     FP -= TP;
-    //     int TN = ALL - TP - FP;
-
-    //     precisions.push_back(TP / (double)(TP + FP));
-    // }
-    return precisions;
-}
-
+/**  Calculates the positive sensitivity (TP / (TP + FP)) of the classifier.
+ * Employs a one versus all strategy, resulting in a value for every class.
+ */
 std::vector<double> sensitivity(matrix m, int dim)
 {
     std::vector<double> sensitivities;
@@ -93,6 +79,9 @@ std::vector<double> sensitivity(matrix m, int dim)
     return sensitivities;
 }
 
+/**  Calculates the specificity (TN / (TN + FP)) of the classifier. 
+ * Employs a one versus all strategy, resulting in a value for every class.
+ * */
 std::vector<double> specificity(matrix m, int dim)
 {
     std::vector<double> specificities;
@@ -122,7 +111,11 @@ std::vector<double> specificity(matrix m, int dim)
     return specificities;
 }
 
-std::vector<double> fscore(std::vector<double> precisions, std::vector<double> sensitivities)
+/**  Calculates the fscore (2 / ((1/precision) + (1/sensitivity)) )) of the classifier. 
+* Employs a one versus all strategy, resulting in a value for every class.
+*/
+std::vector<double> fscore(std::vector<double> precisions /**< The precision of every class. */,
+    std::vector<double> sensitivities /**< The sensitivity of every class. */)
 {
     std::vector<double> fscores;
     if (precisions.size() != sensitivities.size()) {
@@ -136,6 +129,7 @@ std::vector<double> fscore(std::vector<double> precisions, std::vector<double> s
     return fscores;
 }
 
+/**  Clalculates the variance of some samples, with the mean already computed.*/
 double sampleVariance(std::vector<double> samples, double mean)
 {
     if (samples.size() == 1) {
@@ -147,6 +141,7 @@ double sampleVariance(std::vector<double> samples, double mean)
     return sum / (samples.size() - 1);
 }
 
+/**  Clalculates the variance of some samples.*/
 double sampleVariance(std::vector<double> samples)
 {
     if (samples.size() == 1) {
@@ -162,10 +157,13 @@ double sampleVariance(std::vector<double> samples)
     return sum / (samples.size() - 1);
 }
 
+/** Returns a 95% confidence interval to the mean of a particular set of samples.
+ *  A tuple (mu, error) is returned with mu being the mean and error being the +-error.
+*/
 std::pair<double, double> confidence95(std::vector<double> samples)
 {
     if (samples.size() == 1) {
-        return std::make_pair(0, 0);
+        return std::make_pair(samples[0], 0);
     }
     double sum = 0;
     std::for_each(samples.begin(), samples.end(),
@@ -176,6 +174,7 @@ std::pair<double, double> confidence95(std::vector<double> samples)
     return std::make_pair(mean, 1.96 * standardError);
 }
 
+/** Calculates the Area Under Curve of each class for a particular classifier.*/
 std::vector<double> AUC(matrix m, int dim)
 {
     std::vector<double> sensitivities = sensitivity(m, dim);

@@ -7,6 +7,12 @@ clang-format
 *.o
 *.obj
 SOM
+som.txt
+#CLion
+src/cmake-build-debug/
+.idea
+
+
 # Precompiled Headers
 *.gch
 *.pch
@@ -35,6 +41,8 @@ SOM
 *.som
 data/*
 *.jpg
-
+*.png
+*.pdf 
+*.zip
 # Documentation
 documentation/*

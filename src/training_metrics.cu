@@ -6,16 +6,16 @@
 
 /** \brief
  * This namespace contains the methods that derive certain metrics 
- * from a provided confusion matrix.
+ * from a provided confusion confusion_matrix.
  */
-namespace confusion_matrix {
+namespace training_metrics {
 
-/** \brief This type hides the confusion matrix container implementation type. */
-typedef std::vector<std::vector<int>> matrix;
+/** \brief This type hides the confusion confusion_matrix container implementation type. */
+typedef std::vector<std::vector<int>> confusion_matrix;
 
-/** \brief Prints the confusion matrix to an output stream.
+/** \brief Prints the confusion confusion_matrix to an output stream.
  * */
-void print_matrix(std::ostream& out, matrix m, int dim)
+void print_confusion_matrix(std::ostream& out, confusion_matrix m, int dim)
 {
     for (int i = 0; i < dim; i++) {
         for (int j = 0; j < dim; j++) {
@@ -26,7 +26,7 @@ void print_matrix(std::ostream& out, matrix m, int dim)
 }
 
 /** \brief calculates the overall accuracy of the classifier. */
-double accuracy(matrix m, int dim)
+double accuracy(confusion_matrix m, int dim)
 {
     int TP = 0;
     for (int i = 0; i < dim; i++) {
@@ -44,7 +44,7 @@ double accuracy(matrix m, int dim)
 /**  Calculates the positive precision (TP / (TP + FN)) of the classifier.
  * Employs a one versus all strategy, resulting in a value for every class.
  */
-std::vector<double> positive_precisions(matrix m, int dim)
+std::vector<double> positive_precisions(confusion_matrix m, int dim)
 {
     std::vector<double> precisions;
     for (int i = 0; i < dim; i++) {
@@ -63,7 +63,7 @@ std::vector<double> positive_precisions(matrix m, int dim)
 /**  Calculates the positive sensitivity (TP / (TP + FP)) of the classifier.
  * Employs a one versus all strategy, resulting in a value for every class.
  */
-std::vector<double> sensitivity(matrix m, int dim)
+std::vector<double> sensitivity(confusion_matrix m, int dim)
 {
     std::vector<double> sensitivities;
     for (int i = 0; i < dim; i++) {
@@ -82,7 +82,7 @@ std::vector<double> sensitivity(matrix m, int dim)
 /**  Calculates the specificity (TN / (TN + FP)) of the classifier. 
  * Employs a one versus all strategy, resulting in a value for every class.
  * */
-std::vector<double> specificity(matrix m, int dim)
+std::vector<double> specificity(confusion_matrix m, int dim)
 {
     std::vector<double> specificities;
     int ALL = 0;
@@ -119,7 +119,7 @@ std::vector<double> fscore(std::vector<double> precisions /**< The precision of 
 {
     std::vector<double> fscores;
     if (precisions.size() != sensitivities.size()) {
-        std::cerr << "[confusion_matrix::fscore] invalida precisions or sensitivities" << std::endl;
+        std::cerr << "[training_metrics::fscore] invalida precisions or sensitivities" << std::endl;
         exit(1);
     }
 
@@ -175,7 +175,7 @@ std::pair<double, double> confidence95(std::vector<double> samples)
 }
 
 /** Calculates the Area Under Curve of each class for a particular classifier.*/
-std::vector<double> AUC(matrix m, int dim)
+std::vector<double> AUC(confusion_matrix m, int dim)
 {
     std::vector<double> sensitivities = sensitivity(m, dim);
     std::vector<double> specificities = specificity(m, dim);

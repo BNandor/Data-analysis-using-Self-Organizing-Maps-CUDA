@@ -56,7 +56,7 @@ public:
         sampleDim = digitWidth * digitHeight;
 
         // initializeSampledSOM(_map, digitWidth, digitHeight);
-        initializeRandomSOM(_map, digitWidth, digitHeight);
+        initializeSampledSOM(_map, digitWidth, digitHeight);
         setup_CUDA(sampleDim, data.getDigits().size());
         copy_map_to_device(digitWidth * digitHeight, mapWidth, mapHeight);
         copy_samples_to_device(sampleDim);
@@ -236,19 +236,15 @@ public:
         double windowSmallness = 8;
         double neighbourRadius = (std::max(mapWidth, mapHeight) / windowSmallness);
         int T = 0;
-        double minAdjustment = 0.1;
-        double maxAdjusted = minAdjustment + 1;
         int randomSampleIndex;
         double learningRate;
 
         std::pair<int, int> closestPrototype;
 
-        while (T < maxT /*&& maxAdjusted > minAdjustment*/) {
+        while (T < maxT ) {
             everyFewIterations(T, maxT, this);
             randomSampleIndex = rand() % data.getDigits().size();
             closestPrototype = getClosestPrototypeIndices(randomSampleIndex, sampleDim);
-
-            // cudaMemcpy(dev_sample,data.getDigits()[randomSampleIndex].getShades(),sizeof(double)*sampleDim,cudaMemcpyHostToDevice);
             dev_updateNeighbours<<<mapWidth * mapHeight, 1>>>(
                 closestPrototype.first, closestPrototype.second, learningRate,
                 neighbourRadius, dev_samples + randomSampleIndex * sampleDim,

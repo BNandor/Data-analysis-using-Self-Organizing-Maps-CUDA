@@ -140,6 +140,14 @@ namespace io {
             som.printMapToStream(output);
             output.close();
         }
+
+        /** Prints intermediate SOM */
+        void printIntermediateSOM(int T, ::SOM::SelfOrganizingMap* map,std::string output) {
+                std::ofstream file;
+                file.open(output);
+                map->printMapToStream(file);
+                file.close();
+        }
     } // namespace SOM
 } // namespace io
 #endif

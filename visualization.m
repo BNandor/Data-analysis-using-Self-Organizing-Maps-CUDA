@@ -1,9 +1,9 @@
 somcount=100
-digitsize = 28
+digitsize = 8
 digitdimension = digitsize * digitsize
 for s=0:(somcount-1)
   
-  filename = sprintf("%d.som",s)
+  filename = sprintf("9_%d.som",s)
   mapdim = dlmread(filename, ' ', [0,0,0,1]);
   Mosaic=[]
   alldata = dlmread(filename,' ', 1,0);

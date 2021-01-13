@@ -1,11 +1,17 @@
 # Prerequisites
 *.d
-
+clang-format
 # Compiled Object files
 *.slo
 *.lo
 *.o
 *.obj
+SOM
+som.txt
+#CLion
+src/cmake-build-debug/
+.idea
+
 
 # Precompiled Headers
 *.gch
@@ -30,3 +36,13 @@
 *.exe
 *.out
 *.app
+
+# SOM
+*.som
+data/*
+*.jpg
+*.png
+*.pdf 
+*.zip
+# Documentation
+documentation/*

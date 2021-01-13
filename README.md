@@ -8,7 +8,7 @@ This repository contains a C++ implementation of self organizing maps.
 It is capable of the saving of the intermediate training states  thus allowing for better visualization. 
 It is also capable of classification by calculating the kNN within classified maps. 
 The learning rate is decreased along the slope of the normal distribution with the standard deviation of `max generation number / 3`  
-![](8x8gif.gif) <img src="emnist28x28.gif"  width="180" height="180">
+![](media/8x8gif.gif) <img src="media/emnist28x28.gif"  width="180" height="180">
 
 ### Available flags  
 `imagew, imageh` dimensions of the input data  

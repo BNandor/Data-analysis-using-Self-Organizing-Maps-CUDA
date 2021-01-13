@@ -33,7 +33,7 @@ based on which quality metrics such as accuracy, f-score, specificity, sensitivi
 precision and AUC are calculated. Finally confidence intervals with 95% confidence
 are provided for these values. The implementation reaches an accuracy of 0.
 ± 0. 0049 with 95% confidence in the 8x8 case, and an accuracy of 0.9019± 0. 017 in
-the 28x28 case of the MNIST dataset.
+the 28x28 case of the MNIST dataset.  
 ![](media/8x8gif.gif) <img src="media/emnist28x28.gif"  width="180" height="180">
 
 ### Available flags  

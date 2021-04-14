@@ -55,8 +55,8 @@ the 28x28 case of the MNIST dataset.
 
 Environment
 
-The C++ language was chosen due to it’s high performance and easy CUDA in-
-teroperability. CUDA is being used to parallelize the calculation of distances of a
+The C++ language was chosen due to it’s high performance and easy CUDA interoperability.
+CUDA is being used to parallelize the calculation of distances of a
 sample to all of the representative nodes, and to update each representative node
 according to the weight update rule. After performing some benchmark tests, I have
 found that the CUDA version gains a speedup of a factor of 2. The points are stored

@@ -17,7 +17,7 @@ of the model by saving intermediate map states.
 
 The software enables the use of two types of initialization, random and random
 sampling. The model is being trained in a stepwise approximating fashion, that is
-at every iterationta random sample is selected from the training dataset.
+at every iteration a random sample is selected from the training dataset.
 The learning rateαstarts with a value of 0.9 in every case, and decreases along
 the slope of a Gaussian withμ0 andσof the third of the number of maximum
 iterations. The neighbourhood function is also a Gaussian whose radius is initialized

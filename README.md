@@ -31,7 +31,7 @@ unseen images are being labeled as their best matching map. For proper testing
 I used 5 fold cross-validation. After each validation a confusion matrix is derived
 based on which quality metrics such as accuracy, f-score, specificity, sensitivity,
 precision and AUC are calculated. Finally confidence intervals with 95% confidence
-are provided for these values. The implementation reaches an accuracy of 0.
+are provided for these values. The implementation reaches an accuracy of 0.96
 ± 0. 0049 with 95% confidence in the 8x8 case, and an accuracy of 0.9019± 0. 017 in
 the 28x28 case of the MNIST dataset.  
 ![](media/8x8gif.gif) <img src="media/emnist28x28.gif"  width="180" height="180">
